@@ -1,3 +1,5 @@
+"use client";
+
 import { getCabins } from "../_lib/data-service";
 
 import CabinCard from "./CabinCard";
