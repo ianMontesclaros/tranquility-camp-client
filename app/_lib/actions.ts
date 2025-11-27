@@ -86,24 +86,35 @@ export async function createBooking(
   bookingData: Partial<IBookingAction>,
   formData: FormData
 ) {
-  const session = await AuthorizeUserOperation();
+  const session = await auth();
+  if (!session) throw new Error("You must be logged in");
+
+  const observations = String(formData.get("observations") || "").slice(
+    0,
+    1000
+  );
 
   const newBooking = {
     ...bookingData,
     guestId: session.user.guestId,
     numGuests: Number(formData.get("numGuests")),
-    observations: formData.get("observations")?.slice(0, 1000),
+    observations,
     extrasPrice: 0,
     totalPrice: bookingData.cabinPrice,
-    status: "unconfirmed",
     isPaid: false,
     hasBreakfast: false,
+    status: "unconfirmed",
   };
 
   const { error } = await supabase.from("bookings").insert([newBooking]);
 
-  if (error) throw new Error("Booking could not be created");
+  if (error) {
+    console.error("SUPABASE ERROR:", error);
+    throw new Error(error.message);
+  }
+
   revalidatePath(`/cabins/${bookingData.cabinId}`);
+
   redirect("/cabins/thankyou");
 }
 

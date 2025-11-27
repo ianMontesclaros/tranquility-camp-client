@@ -1,6 +1,7 @@
 import { PencilSquareIcon } from "@heroicons/react/24/solid";
 import { format, formatDistance, isPast, isToday, parseISO } from "date-fns";
 import { IBooking } from "../_types/database";
+import { getCabin } from "../_lib/data-service";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -16,7 +17,7 @@ export const formatDistanceFromNow = (dateStr: string) =>
     addSuffix: true,
   }).replace("about ", "");
 
-export default function ReservationCard({ booking, onDelete }: Props) {
+export default async function ReservationCard({ booking, onDelete }: Props) {
   const {
     id,
     startDate,
@@ -25,8 +26,10 @@ export default function ReservationCard({ booking, onDelete }: Props) {
     totalPrice,
     numGuests,
     created_at,
-    cabins: { name, image },
+    cabinId,
   } = booking;
+
+  const { name, image } = await getCabin(cabinId);
 
   return (
     <div className="flex border border-primary-800">

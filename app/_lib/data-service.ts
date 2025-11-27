@@ -30,13 +30,20 @@ export const getCabins = async function () {
 };
 
 export async function getGuest(email: string) {
-  const { data } = await supabase
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const { data, error } = await supabase
     .from("guests")
     .select("*")
-    .eq("email", email)
-    .single();
+    .eq("email", normalizedEmail)
+    .maybeSingle();
 
-  // Error handling is done in the sign-in callback
+  if (error) {
+    console.error("[getGuest] SUPABASE ERROR:", error);
+
+    return null;
+  }
+
   return data;
 }
 
@@ -53,20 +60,22 @@ export async function getBooking(bookingId: number) {
 }
 
 export async function getBookings(guestId: number) {
+  if (!guestId) {
+    console.warn("[getBookings] guestId is undefined — returning empty list");
+    return [];
+  }
+
   const { data, error } = await supabase
     .from("bookings")
-    .select(
-      "id, created_at, startDate, endDate, numNights, numGuests, totalPrice, guestId, cabinId, cabins(name, image)"
-    )
-    .eq("guestId", guestId)
-    .order("startDate");
+    .select("*")
+    .eq("guestId", guestId); // keep simple for now
 
   if (error) {
     console.error(error);
     throw new Error("Bookings could not get loaded");
   }
 
-  return data as unknown as IBooking[];
+  return data as IBooking[];
 }
 
 export async function getBookedDatesByCabinId(cabinId: number) {
@@ -74,7 +83,6 @@ export async function getBookedDatesByCabinId(cabinId: number) {
   today.setUTCHours(0, 0, 0, 0);
   today = today.toISOString();
 
-  // Getting all bookings
   const { data, error } = await supabase
     .from("bookings")
     .select("*")
@@ -86,14 +94,13 @@ export async function getBookedDatesByCabinId(cabinId: number) {
     throw new Error("Bookings could not get loaded");
   }
 
-  // Converting to actual dates to be displayed in the date picker
   const bookedDates = data
-    .map((booking) => {
-      return eachDayOfInterval({
+    .map((booking) =>
+      eachDayOfInterval({
         start: new Date(booking.startDate),
         end: new Date(booking.endDate),
-      });
-    })
+      })
+    )
     .flat();
 
   return bookedDates;
@@ -123,7 +130,12 @@ export async function createGuest(newGuest: {
   email: string;
   fullName: string;
 }) {
-  const { error } = await supabase.from("guests").insert([newGuest]);
+  const { data, error } = await supabase.from("guests").insert([newGuest]);
 
-  if (error) throw new Error("Guest could not be created");
+  if (error) {
+    console.error(error);
+    throw new Error("Guest could not be created");
+  }
+
+  return data;
 }
